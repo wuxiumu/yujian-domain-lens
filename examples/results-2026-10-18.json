@@ -2,25 +2,17 @@
   "results": [
     {
       "domain": "51chigua.com",
-      "checked_at": "2026-10-18T12:27:01+00:00",
+      "checked_at": "2026-10-18T13:17:34+00:00",
       "registration": {
-        "data": {
-          "domain": "51chigua.com",
-          "created_at": "2022-03-22T16:37:31Z",
-          "status": [
-            "client delete prohibited",
-            "client renew prohibited",
-            "client transfer prohibited",
-            "client update prohibited"
-          ],
-          "source": "https://rdap.verisign.com/com/v1/domain/51chigua.com",
-          "note": null
-        },
-        "error": null
+        "data": null,
+        "error": {
+          "code": "timeout",
+          "message": "请求超时。"
+        }
       },
       "seo": {
         "data": {
-          "url": "https://znl1.51chiguafun.com",
+          "url": "https://znl1.51chiguafun.com/",
           "http_status": 200,
           "redirects": [
             {
@@ -32,7 +24,7 @@
               "status": 302
             },
             {
-              "url": "https://znl1.51chiguafun.com",
+              "url": "https://znl1.51chiguafun.com/",
               "status": 200
             }
           ],
@@ -61,14 +53,46 @@
         "error": null
       },
       "cache": {
-        "hit": false,
-        "ttl_seconds": 3600,
-        "expires_at": "2026-10-18T13:27:08+00:00"
+        "hit": true,
+        "ttl_seconds": 300,
+        "expires_at": "2026-10-18T13:22:45+00:00"
+      },
+      "traffic": {
+        "provider": "TabAPI",
+        "estimated": true,
+        "documentation_url": "https://tabapi.com/traffic",
+        "checked_at": "2026-10-18T13:17:46+00:00",
+        "status": "ok",
+        "data": {
+          "domain": "51chigua.com",
+          "month": "2026-09",
+          "monthly_visits": 35922,
+          "history": [
+            {
+              "month": "2026-07",
+              "visits": 14911
+            },
+            {
+              "month": "2026-08",
+              "visits": 13385
+            },
+            {
+              "month": "2026-09",
+              "visits": 35922
+            }
+          ]
+        },
+        "error": null,
+        "cache": {
+          "hit": true,
+          "expires_at": "2026-10-25T13:17:46+00:00",
+          "ttl_seconds": 604800
+        }
       }
     },
     {
       "domain": "51chiguai.com",
-      "checked_at": "2026-10-18T12:27:08+00:00",
+      "checked_at": "2026-10-18T13:00:44+00:00",
       "registration": {
         "data": {
           "domain": "51chiguai.com",
@@ -120,64 +144,41 @@
         "error": null
       },
       "cache": {
-        "hit": false,
+        "hit": true,
         "ttl_seconds": 3600,
-        "expires_at": "2026-10-18T13:27:14+00:00"
-      }
-    },
-    {
-      "domain": "example.com",
-      "checked_at": "2026-10-18T12:27:14+00:00",
-      "registration": {
-        "data": {
-          "domain": "example.com",
-          "created_at": "1995-08-14T04:00:00Z",
-          "status": [
-            "client delete prohibited",
-            "client transfer prohibited",
-            "client update prohibited"
-          ],
-          "source": "https://rdap.verisign.com/com/v1/domain/example.com",
-          "note": null
-        },
-        "error": null
+        "expires_at": "2026-10-18T14:00:51+00:00"
       },
-      "seo": {
+      "traffic": {
+        "provider": "TabAPI",
+        "estimated": true,
+        "documentation_url": "https://tabapi.com/traffic",
+        "checked_at": "2026-10-18T13:14:08+00:00",
+        "status": "ok",
         "data": {
-          "url": "https://example.com/",
-          "http_status": 200,
-          "redirects": [
+          "domain": "51chiguai.com",
+          "month": "2026-09",
+          "monthly_visits": 3717,
+          "history": [
             {
-              "url": "https://example.com/",
-              "status": 200
+              "month": "2026-07",
+              "visits": 585
+            },
+            {
+              "month": "2026-08",
+              "visits": 3355
+            },
+            {
+              "month": "2026-09",
+              "visits": 3717
             }
-          ],
-          "content_type": "text/html; charset=utf-8",
-          "x_robots_tag": [],
-          "meta": {
-            "title": "Example Domain",
-            "description": null,
-            "keywords": null,
-            "canonical": null,
-            "robots": null,
-            "googlebot": null,
-            "lang": "en",
-            "h1": []
-          },
-          "warnings": [],
-          "robots_txt": {
-            "url": "https://example.com/robots.txt",
-            "http_status": 404,
-            "preview": "<!doctype html><html lang=en><head><meta charset=utf-8><link rel=icon href=data:,><meta name=viewport content=\"width=device-width,initial-scale=1\"><title>Example Domain</title><style>html{color-scheme:light dark;background:light-dark(#eee,#222)}body{font:16px/1.6 system-ui,sans-serif;max-width:26em;margin:auto;padding:25vh 2em 2em;text-align:center}</style></head><body><p>This domain is for use in documentation examples without needing permission. This is not a service; avoid relying on it for testing and monitoring purposes.</p><script src=/s.js></script></body></html>\n",
-            "truncated": false
-          }
+          ]
         },
-        "error": null
-      },
-      "cache": {
-        "hit": false,
-        "ttl_seconds": 3600,
-        "expires_at": "2026-10-18T13:27:20+00:00"
+        "error": null,
+        "cache": {
+          "hit": true,
+          "expires_at": "2026-10-25T13:14:08+00:00",
+          "ttl_seconds": 604800
+        }
       }
     }
   ]

@@ -1,2 +1,8 @@
 /var/cache/*
 !/var/cache/.gitkeep
+/var/state/*
+!/var/state/.gitkeep
+/.env
+/.env.*
+.DS_Store
+/config/traffic.local.php

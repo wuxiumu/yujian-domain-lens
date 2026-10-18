@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace DomainLens;
+require_once __DIR__.'/Traffic.php';
 
 final class Problem extends \RuntimeException {
     public function __construct(public readonly string $kind, string $message) { parent::__construct($message); }
@@ -62,7 +63,7 @@ final class Http {
         foreach($ips as $ip) if(!is_string($ip) || !publicIp($ip)) throw new Problem('blocked_ip','DNS 返回非公网地址，已阻止访问。');
         return $this->dns[$host] = array_values(array_unique($ips));
     }
-    public function get(string $url, int $limit = 2097152, float $budget = 20): array {
+    public function get(string $url, int $limit = 2097152, float $budget = 20, array $extraHeaders = []): array {
         $start = microtime(true); $chain = [];
         for ($hop=0;$hop<=4;$hop++) {
             $p = parse_url($url);
@@ -75,7 +76,7 @@ final class Http {
             $port = strtolower($p['scheme']) === 'https' ? 443 : 80;
             $body = ''; $headers = []; $size = 0; $headerSize = 0; $tooLarge = false;
             $c = curl_init($url);
-            curl_setopt_array($c,[CURLOPT_PROXY=>'',CURLOPT_FOLLOWLOCATION=>false,CURLOPT_PROTOCOLS=>CURLPROTO_HTTP|CURLPROTO_HTTPS,CURLOPT_CONNECTTIMEOUT_MS=>min(4000,(int)($remaining*1000)),CURLOPT_TIMEOUT_MS=>(int)($remaining*1000),CURLOPT_RESOLVE=>["$host:$port:".(str_contains($ip,':') ? "[$ip]" : $ip)],CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_ENCODING=>'',CURLOPT_USERAGENT=>'DomainLens/1.0 (+public metadata analysis)',CURLOPT_HTTPHEADER=>['Accept: text/html, application/rdap+json, application/json;q=0.9, */*;q=0.5'],CURLOPT_HEADERFUNCTION=>static function($c,$line) use (&$headers,&$headerSize,&$tooLarge) {
+            curl_setopt_array($c,[CURLOPT_PROXY=>'',CURLOPT_FOLLOWLOCATION=>false,CURLOPT_PROTOCOLS=>CURLPROTO_HTTP|CURLPROTO_HTTPS,CURLOPT_CONNECTTIMEOUT_MS=>min(4000,(int)($remaining*1000)),CURLOPT_TIMEOUT_MS=>(int)($remaining*1000),CURLOPT_RESOLVE=>["$host:$port:".(str_contains($ip,':') ? "[$ip]" : $ip)],CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_ENCODING=>'',CURLOPT_USERAGENT=>'DomainLens/1.0 (+public metadata analysis)',CURLOPT_HTTPHEADER=>['Accept: text/html, application/rdap+json, application/json;q=0.9, */*;q=0.5',...$extraHeaders],CURLOPT_HEADERFUNCTION=>static function($c,$line) use (&$headers,&$headerSize,&$tooLarge) {
                 $headerSize += strlen($line); if ($headerSize>65536) { $tooLarge=true; return 0; }
                 if (preg_match('/^HTTP\//',$line)) $headers=[];
                 if (str_contains($line,':')) { [$k,$v]=explode(':',$line,2); $headers[strtolower(trim($k))][] = trim($v); }
@@ -87,6 +88,7 @@ final class Http {
             if (!publicIp($peer) || inet_pton($peer)!==inet_pton($ip)) throw new Problem('blocked_ip','连接地址与已验证公网地址不符。');
             $chain[]=['url'=>$url,'status'=>$status];
             if (in_array($status,[301,302,303,307,308],true) && isset($headers['location'][0])) {
+                if ($extraHeaders) throw new Problem('provider_redirect','认证接口发生重定向，已阻止以防泄露凭据。');
                 if ($hop===4) throw new Problem('redirect_limit','重定向超过 4 次。');
                 $url = resolveUrl($url,$headers['location'][0]); continue;
             }
@@ -117,6 +119,7 @@ final class Cache {
         $p=$this->path($key); $tmp=tempnam($this->dir,'tmp-');
         if (!$tmp || file_put_contents($tmp,json_encode(['expires'=>time()+$ttl,'value'=>$value],JSON_UNESCAPED_UNICODE|JSON_INVALID_UTF8_SUBSTITUTE),LOCK_EX)===false || !rename($tmp,$p)) throw new Problem('cache_error','文件缓存写入失败。');
     }
+    public function remove(string $key): void { $p=$this->path($key); if(is_file($p) && !unlink($p)) throw new Problem('cache_error','缓存删除失败，请检查目录权限。'); }
     public function lock(string $key) { $f=fopen($this->path('lock:'.$key),'c'); if(!$f || !flock($f,LOCK_EX|LOCK_NB)) throw new Problem('busy','相同域名正在查询，请稍后重试。'); return $f; }
 }
 function registrable(string $host): string {
@@ -161,7 +164,7 @@ function metadata(string $html,string $contentType,string $url): array {
     $doc=new \DOMDocument(); $old=libxml_use_internal_errors(true);
     try { $doc->loadHTML('<?xml encoding="UTF-8">'.$html,LIBXML_NONET|LIBXML_NOERROR|LIBXML_NOWARNING); } finally { libxml_clear_errors(); libxml_use_internal_errors($old); }
     $xp=new \DOMXPath($doc); $out=['title'=>null,'description'=>null,'keywords'=>null,'canonical'=>null,'robots'=>null,'googlebot'=>null,'lang'=>null,'h1'=>[]];
-    $clean=static fn($s)=>mb_substr(trim(preg_replace('/\s+/u',' ',mb_convert_encoding($s,'UTF-8','UTF-8')) ?? ''),0,4000);
+    $clean=static fn($s)=>mb_substr(trim(preg_replace('/\s+/u',' ',mb_convert_encoding($s,'UTF-8','UTF-8')) ?? ''),0,16000);
     $title=$doc->getElementsByTagName('title')->item(0); if($title) $out['title']=$clean($title->textContent);
     $out['lang']=$doc->getElementsByTagName('html')->item(0)?->getAttribute('lang') ?: null;
     foreach($doc->getElementsByTagName('meta') as $meta) { $name=strtolower(trim($meta->getAttribute('name'))); if(in_array($name,['description','keywords','robots','googlebot'],true) && $out[$name]===null) $out[$name]=$clean($meta->getAttribute('content')); }
@@ -182,8 +185,8 @@ function seo(string $host,Http $http): array {
     catch(\Throwable $e) { $out['robots_txt']=['url'=>$robotsUrl,'error'=>failure($e)]; }
     return $out;
 }
-function analyze(string $input,Cache $cache): array {
-    $host=domain($input); $key='v2:'.$host; $hit=$cache->read($key);
+function analyzeCore(string $input,Cache $cache): array {
+    $host=domain($input); $key='v3:'.$host; $hit=$cache->read($key);
     if($hit!==null) { $hit['cache']['hit']=true; return $hit; }
     $lock=$cache->lock($host);
     try {
@@ -191,8 +194,48 @@ function analyze(string $input,Cache $cache): array {
         $http=new Http(); $result=['domain'=>$host,'checked_at'=>gmdate('c')];
         try { $result['registration']=['data'=>rdap($host,$http),'error'=>null]; } catch(\Throwable $e) { $result['registration']=['data'=>null,'error'=>failure($e)]; }
         try { $result['seo']=['data'=>seo($host,$http),'error'=>null]; } catch(\Throwable $e) { $result['seo']=['data'=>null,'error'=>failure($e)]; }
+        $result['checked_at']=gmdate('c');
         $ttl=($result['registration']['error'] || $result['seo']['error'])?300:3600;
         $result['cache']=['hit'=>false,'ttl_seconds'=>$ttl,'expires_at'=>gmdate('c',time()+$ttl)];
         $cache->write($key,$result,$ttl); return $result;
     } finally { flock($lock,LOCK_UN); fclose($lock); }
+}
+
+/** Server-only configuration; local secrets stay outside the document root and Git. */
+function trafficSettings(): array {
+    $path=__DIR__.'/../config/traffic.local.php';
+    $config=is_file($path) ? require $path : [];
+    if(!is_array($config)) throw new Problem('traffic_config_error','流量配置文件格式不正确。');
+    $configured=getenv('TRAFFIC_MAX_LOOKUPS');
+    $limit=$configured===false ? ($config['max_lookups']??30) : (ctype_digit($configured)?(int)$configured:-1);
+    $key=getenv('TABAPI_KEY') ?: ($config['tabapi_key']??null);
+    if(($key!==null && !is_string($key)) || !is_int($limit) || $limit<0 || $limit>100000) throw new Problem('traffic_config_error','流量 Key 或调用上限配置无效。');
+    return ['key'=>$key,'limit'=>$limit];
+}
+
+/** Clear the selected host's SEO and the shared root-domain traffic, without resetting budgets. */
+function clearDomainCache(string $input,Cache $cache): array {
+    $host=domain($input); $root=registrable($host); $settings=trafficSettings();
+    $traffic=new TrafficService($cache,__DIR__.'/../var/state',$settings['key'],$settings['limit']);
+    $trafficKey=$traffic->cacheKeyFor($root); $locks=[];
+    try {
+        $locks[]=$cache->lock($host);
+        if($trafficKey!==null) $locks[]=$cache->lock($trafficKey);
+        $cache->remove('v3:'.$host);
+        if($trafficKey!==null) $cache->remove($trafficKey);
+        return ['domain'=>$host,'traffic_domain'=>$root,'cache_cleared'=>true,'cleared_at'=>gmdate('c')];
+    } finally { foreach(array_reverse($locks) as $lock) { flock($lock,LOCK_UN); fclose($lock); } }
+}
+
+/** Keep traffic separate so configuring a key takes effect even on a cached SEO result. */
+function analyze(string $input,Cache $cache): array {
+    $result=analyzeCore($input,$cache);
+    try {
+        $settings=trafficSettings();
+        $traffic=new TrafficService($cache,__DIR__.'/../var/state',$settings['key'],$settings['limit']);
+        $result['traffic']=$traffic->get($result['domain']);
+    } catch(\Throwable $e) {
+        $result['traffic']=['status'=>'error','provider'=>'TabAPI','estimated'=>true,'data'=>null,'error'=>failure($e)];
+    }
+    return $result;
 }

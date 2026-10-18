@@ -18,6 +18,8 @@ try {
     $body=file_get_contents('php://input',false,null,0,65537);
     if(strlen($body)>65536) respond(['error'=>['code'=>'body_too_large','message'=>'请求体不能超过 64 KiB。']],413);
     $json=json_decode($body,true,32,JSON_THROW_ON_ERROR);
+    $action=is_array($json)?($json['action']??'analyze'):'analyze';
+    if(!in_array($action,['analyze','refresh','clear_cache'],true)) respond(['error'=>['code'=>'invalid_action','message'=>'仅支持 analyze、refresh 和 clear_cache 操作。']],422);
     $input=is_array($json)?($json['domains']??null):null;
     if(is_string($input)) $input=preg_split('/[\r\n,，]+/u',$input,-1,PREG_SPLIT_NO_EMPTY);
     if(!is_array($input) || !array_is_list($input) || count($input)<1 || count($input)>10) respond(['error'=>['code'=>'batch_limit','message'=>'接口每次接受 1–10 个域名；前端会自动排队，无总数量限制。']],422);
@@ -29,8 +31,16 @@ try {
         if($rate['count']+count($input)>60) { header('Retry-After: 60'); respond(['error'=>['code'=>'rate_limit','message'=>'每 IP 每分钟最多查询 60 个域名，请一分钟后重试。']],429); }
         $rate['count']+=count($input); $cache->write($rateKey,$rate,60);
     } finally { flock($rateLock,LOCK_UN); fclose($rateLock); }
-    set_time_limit(600); $results=[];
-    foreach($input as $s) { try { $results[]=DomainLens\analyze($s,$cache); } catch(Throwable $e) { $results[]=['input'=>$s,'error'=>DomainLens\failure($e)]; } }
+    set_time_limit(900); $results=[];
+    foreach($input as $s) {
+        try {
+            if($action==='clear_cache') $results[]=DomainLens\clearDomainCache($s,$cache);
+            else {
+                if($action==='refresh') DomainLens\clearDomainCache($s,$cache);
+                $results[]=DomainLens\analyze($s,$cache);
+            }
+        } catch(Throwable $e) { $results[]=['input'=>$s,'error'=>DomainLens\failure($e)]; }
+    }
     respond(['results'=>$results]);
 } catch(JsonException) { respond(['error'=>['code'=>'invalid_json','message'=>'JSON 格式无效。']],400); }
 catch(Throwable $e) { respond(['error'=>DomainLens\failure($e)],$e instanceof Problem && $e->kind==='busy'?429:500); }

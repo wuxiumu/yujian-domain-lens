@@ -1,6 +1,6 @@
 # 域见 · Domain Lens
 
-免费的 PHP 8.1+ 域名分析 MVP，无数据库、无 Composer / npm 依赖、无 API Key。输入多个域名（换行、英文或中文逗号分隔），逐项展示注册时间、页面 SEO 信息和错误。支持中文域名、结果展开、JSON 导出、文件缓存和队列停止。
+免费的 PHP 8.1+ 域名分析 MVP，无数据库、无 Composer / npm 依赖。注册与 SEO 查询无需 Key；可选流量估算需配置 TabAPI Key。输入多个域名（换行、英文或中文逗号分隔），逐项展示注册时间、页面 SEO 信息和错误。支持中文域名、结果展开、JSON 导出、文件缓存和队列停止。Title / Description / Keywords 可点击弹窗查看；列表分别预览 3 / 4 / 3 行，超出隐藏，单字段最多保留 16,000 字符。
 
 在线演示：<https://yujian.chiguashentan.com/>
 
@@ -49,8 +49,72 @@ Windows 可在服务环境中设置 `DOMAIN_LENS_PHP_CLI` 为 `php.exe` 的绝�
 - **robots.txt**：从最终页面的 origin 读取，显示状态和最多 16,000 字符预览。仅展示内容，不声称已判断所有搜索引擎是否允许索引。
 - canonical 相对地址会按最终页面地址及 `<base>` 解析；canonical 只展示，不抓取。
 - 只解析服务器返回的 HTML，不执行 JavaScript。单页应用、验证码、反爬和登录页面可能没有真实页面的元数据。HTTP 403 / 404 / 500 仍保留状态，并标记其元数据可能来自错误页。
-- 不提供访问量、访问时长或 SEO 分数，也不会推测、填充或模拟此类数据。
+- 可选展示 TabAPI 提供的月访问量估算，保留原始数值、统计月份、统计主体域名和来源。展示为 `12.29M` 这类缩写，弹窗可查看完整数值。没有配置 Key、没有数据、限流、积分不足分别显示状态，不会用 0 或示例值填充；服务商明确返回 0 时才显示 0。
+- 不提供 SEO 分数，不自行推算流量。TabAPI 和 AITDK 扩展的数据不保证相同，不把 TabAPI 冒充为 AITDK 的原始数据。
 - 一律从 `https://域名/` 开始，不自动降级到 HTTP；接受的 `http://域名/` 输入也仅用于提取域名。站点主动重定向到 HTTP 时会检查后跟随，并显示最终协议。证书验证始终开启。
+
+## 月访问量：先用免费额度
+
+AITDK 官网的 **API** 链接目前指向 [TabAPI](https://tabapi.com/)。本项目接入其[公开流量 API](https://tabapi.com/docs)，不会抓取扩展的内部接口或要求提供浏览器 Cookie。
+
+截至 2026-10-18，官方[价格页](https://tabapi.com/pricing)与[流量说明](https://tabapi.com/traffic)列出：
+
+| 方案 | 需要准备 | 费用 / 限制 |
+| --- | --- | --- |
+| AITDK 扩展手动查 | 安装官方 [AITDK 扩展](https://aitdk.com/extension)，按其要求登录 | 可免费查看流量；扩展不会自动把结果写入本工具 |
+| 本工具自动查 | 注册 TabAPI，创建服务器端 API Key | 新账号 100 个免费积分，不需信用卡；不是永久免费，也不是每月赠送 |
+| 免费积分用完后 | 自行决定是否购买积分，并核对余额后调整调用上限 | 单次购买最低 $10，$1 = 1,000 积分；流量每返回 1 个月消耗 1 积分，最少请求 3 个月，即通常每次 3 积分 / $0.003 |
+
+100 个积分约可完成 33 次查询（每次均返回 3 个月时）。本项目为留出余量，默认每个 Key **累计最多向服务商发起 30 次请求**，所有访客共享；不是每人 30 次，也不会自动按月重置。未设置 Key 时不发起流量请求，不影响注册和 SEO。
+
+### 宝塔推荐配置方式
+
+复制仓库中的 `config/traffic.example.php` 为 **`config/traffic.local.php`**，填写自己的 Key：
+
+```php
+<?php
+return [
+    'tabapi_key' => 'sk_替换成你自己的Key',
+    'max_lookups' => 30,
+];
+```
+
+此文件在 Git 忽略列表中，位于 `public/` 外；不要把 Key 放到前端、URL、README 或提交到 GitHub。网站运行目录必须保持 `public/`。配置后重新查询即可，流量缓存与 SEO 缓存独立，不需要删除 SEO 缓存。
+
+也可通过 PHP-FPM 环境设置 `TABAPI_KEY` 和 `TRAFFIC_MAX_LOOKUPS`（环境变量优先于本地配置）。如使用 FPM 环境配置，修改后重启 PHP；命令行临时设置变量不会自动影响已有 FPM 服务。
+
+### 缓存、超时和额度保护
+
+- 固定请求 `https://tabapi.com/api/v1/domains/{注册主体域名}/traffic?months=3`，使用服务商允许的最短 3 个月；第三方响应最多 1 MiB，时间预算 12 秒，解析 DNS 最多额外 4 秒。
+- 使用现有的公网 IP 校验与固定连接；带认证请求一旦重定向立即拒绝，不把 Bearer Key 转发给其他地址。
+- 成功结果缓存 7 天，无数据缓存 1 天，上游错误缓存 5 分钟。子域名按注册主体域名共享流量缓存，同一域名同时查询会加锁。启用 Key 后仍受原有接口限流保护。
+- `var/state/` 保存每个 Key 的累计请求次数，必须可写；**不要删除该目录中的额度记录**。它与 `var/cache/` 分开，缓存清理不会重置调用次数。记录损坏或无法保存时停止调用。
+- 每次发送前预留 1 次调用，失败也保守计入本地上限，不自动重试花费积分的请求。此计数是本站请求上限，**不等同于服务商余额**；同一账号在其他地方的消耗、Key 更换或人工清空记录不在保护范围内。
+- `max_lookups=0` 暂停新的流量请求，已有缓存仍可展示。达到默认上限或服务商返回 402 时显示说明；没有自动充值、购买或扩大额度的逻辑。决定继续使用前，先在 TabAPI 查看余额，必要时自行购买积分，再提高上限。
+- 已使用用户提供的 Key 成功验证两个示例域名，并验证重复查询命中磁盘缓存。2026 年 9 月 TabAPI 月访问量估算分别为 35,922 与 3,717，详见实测 JSON。真实 Key 未写入源码、示例配置或 Git。
+
+## 缓存优先、清除和重新获取
+
+所有数据缓存为项目 `var/cache/` 下的 JSON 文件，无需数据库。普通二次查询先读取有效缓存，不请求上游、不消耗新的流量积分。成功流量默认缓存 7 天，页面和注册信息默认缓存 1 小时；缓存过期后自动重新查询。
+
+- 列表直接显示**页面数据更新时间**与**流量数据更新时间**，精确到秒；流量的统计月份另行展示。弹窗包含完整更新时间、缓存命中状态和有效期，时间按浏览器本地时区显示。
+- 每行“**清除缓存**”：删除该主机的注册 / SEO 缓存和它所属注册主体域名的流量缓存；保留页面上次结果及原更新时间，并标记待更新。清除操作本身不调用服务商。
+- 每行“**重新获取**”：先清除该域名的当前缓存，再重新请求注册、SEO 和流量，成功后原子写回文件，并替换页面结果。它可能消耗 3 个流量积分；如果上游只有旧的统计月份，该月份仍如实展示，不称为实时访问量。
+- 结果区“**清空本次缓存**”：清除当前结果列表中有效域名的缓存，分批调用接口；不清除不在本次列表中的其他域名数据。之后重新查询即可读取最新数据。
+- 清除数据**不删除 `var/state/` 的累计调用额度记录**，不会绕过免费额度保护。子域名共享注册主体域名的流量，清除其中一个会影响共享流量缓存；每个主机的 SEO 缓存仍独立。
+- 清除与写入使用同一组非阻塞锁；数据正在更新时会报忙。仅按规范化域名计算文件哈希，不接受文件路径参数。
+
+API 在原有 `domains` 外增加可选 `action`，默认为 `analyze`，另支持 `refresh` 和 `clear_cache`：
+
+```json
+{"domains":["51chigua.com"],"action":"refresh"}
+```
+
+```json
+{"domains":["51chigua.com","51chiguai.com"],"action":"clear_cache"}
+```
+
+清除成功返回每项 `domain`、`traffic_domain`、`cache_cleared: true`、`cleared_at`。刷新返回与正常分析相同的结果结构。两种操作均受原有单批大小和每 IP 限流约束；刷新不会自动购买积分。
 
 ## 批量、缓存与超时
 
@@ -61,7 +125,7 @@ Windows 可在服务环境中设置 `DOMAIN_LENS_PHP_CLI` 为 `php.exe` 的绝�
 - 页面及 RDAP 解压后正文最多 2 MiB；robots.txt 最多 256 KiB；单次响应头最多 64 KiB。超限明确报错，不拿截断页面当完整结果。
 - 前端单域名接口等待最多 90 秒；停止按钮在当前域名完成后停止排队，并保留已有结果。
 - 完整结果默认缓存 1 小时；注册或页面查询任一失败缓存 5 分钟。robots.txt 的单独错误不会缩短缓存。
-- `var/cache/` 不位于 web 根目录，以域名哈希命名，原子替换；每个域名使用非阻塞独占锁防止同时重复抓取。无“绕过缓存”公开参数，避免无意反复请求上游。
+- `var/cache/` 不位于 web 根目录，以域名哈希命名，原子替换；每个域名使用非阻塞独占锁防止同时重复抓取。默认不绕过缓存；明确点击“重新获取”或使用 `action=refresh` 时才删除当前缓存并请求上游。
 - 缓存是按需判定过期，过期文件不自动删除；锁文件也会保留。需要周期性运行下方维护命令（仅清理过期数据；锁文件保留，若需要清理锁文件，应先停止服务）。
 
 ```sh
@@ -78,9 +142,11 @@ curl -sS http://127.0.0.1:8787/api.php \
 
 也可传字符串：`{"domains":"51chigua.com,51chiguai.com"}`。
 
-成功返回 `{"results":[...]}`。每项有 `domain`、`checked_at`、`registration: {data,error}`、`seo: {data,error}`、`cache`；错误时 `data` 为 null。输入无效时该项返回 `input` 和 `error`，不会阻断其他项。没有注册事件时 `created_at` 为 null 并附说明。时间戳为 UTC ISO 8601，前端检查时间按浏览器时区显示。
+成功返回 `{"results":[...]}`。每项有 `domain`、`checked_at`、`registration: {data,error}`、`seo: {data,error}`、`traffic`、`cache`；错误时 `data` 为 null。输入无效时该项返回 `input` 和 `error`，不会阻断其他项。没有注册事件时 `created_at` 为 null 并附说明。时间戳为 UTC ISO 8601，前端检查时间按浏览器时区显示。
 
 错误结构统一为 `{"code":"…","message":"…"}`。HTTP 200 表示批处理已执行，不保证每个上游成功；应检查每项 error。整个请求格式、方法、大小或限流问题分别返回 400 / 405 / 413 / 415 / 422 / 429，内部故障返回 500。常见上游代码包括 `dns_timeout`、`dns_not_found`、`blocked_ip`、`timeout`、`network_error`、`redirect_limit`、`response_too_large`、`rdap_http_404`、`rdap_http_429`、`rdap_unsupported`。
+
+`traffic.status` 为 `not_configured` / `ok` / `no_data` / `error` / `limit_reached`；成功数据在 `traffic.data`，其中 `monthly_visits` 是原始数字、`month` 是统计月份，`history` 为最近月份。流量错误不影响注册和 SEO 结果；完整结果 JSON 导出包含此字段。
 
 ## SSRF 防护
 
@@ -111,7 +177,7 @@ server {
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root/api.php;
         fastcgi_pass unix:/run/php/php8.3-fpm.sock;
-        fastcgi_read_timeout 700s;
+        fastcgi_read_timeout 900s;
     }
     location ~ \.php$ { return 404; }
     location ~ /\. { deny all; }
@@ -126,6 +192,7 @@ server {
 
 ```sh
 php tests/run.php
+php tests/traffic.php
 python3 tests/api.py http://127.0.0.1:8787
 php scripts/update-data.php
 ```
@@ -141,3 +208,5 @@ php scripts/update-data.php
 源码采用 MIT，PSL 遵循其自身许可。
 
 本次实测结果见 [VERIFICATION.md](VERIFICATION.md) 与 [JSON 快照](examples/results-2026-10-18.json)。快照仅供参考，不参与页面查询。
+
+更新部署时保留服务器上的 `config/traffic.local.php`、`var/cache/` 和 `var/state/`。真实 Key 不随源码分发；首次部署需在服务器本地配置。清空查询缓存不应删除额度记录。
