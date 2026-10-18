@@ -92,7 +92,9 @@ function appendResult(r) { const index=state.results.length;state.results.push(r
 function renderResult(r,index) {
  document.getElementById(`detail-${index}`)?.remove();
  const oldRow=document.getElementById(`result-${index}`);
- const row=el('tr');row.id=`result-${index}`;const d=el('td');d.append(el('strong',r.domain||r.input));const seo=r.seo?.data,reg=r.registration?.data;
+ const row=el('tr');row.id=`result-${index}`;const d=el('td');
+ if(r.history?.url){const report=el('a',undefined,'domain-report-link');report.href=r.history.url;report.append(el('strong',r.domain));d.append(report);const links=el('div',undefined,'domain-links');const view=el('a','独立结果 ↗');view.href=r.history.url;links.append(view);const share=el('button','分享本次','text-button share-result');share.type='button';share.onclick=()=>shareResult(r,share);links.append(share);d.append(links);}
+ else{d.append(el('strong',r.domain||r.input));if(r.history?.error)d.append(el('small','历史保存失败，可重新查询。'));}const seo=r.seo?.data,reg=r.registration?.data;
  if(seo)d.append(el('small',seo.url,'ellipsis'));row.append(d);
  const date=el('td');date.append(el('span',reg?.created_at?reg.created_at.slice(0,10):'—'));if(r.registration?.error)date.append(el('small',r.registration.error.message));else if(reg&&!reg.created_at)date.append(el('small','RDAP 未提供注册事件'));row.append(date);
  const http=el('td');http.append(el('span',seo?String(seo.http_status):'—',`badge ${!seo?'warn':seo.http_status>=400?'error':''}`));row.append(http);
@@ -111,6 +113,11 @@ function renderResult(r,index) {
   for(const [action,label] of [['refresh','重新获取'],['clear_cache','清除缓存']]){const control=el('button',label,'cache-action');control.type='button';control.disabled=state.running;control.onclick=()=>rowAction(index,action);actions.append(control);}status.append(actions);
  }
  row.append(status);if(oldRow)oldRow.replaceWith(row);else $('rows').append(row);$('empty').hidden=true;$('result-count').textContent=String(state.results.length).padStart(2,'0');$('export').disabled=false;
+}
+async function shareResult(r,button){
+ const url=new URL(r.history.snapshot_url||r.history.url,location.origin).href;
+ try{await navigator.clipboard.writeText(url);button.textContent='已复制 ✓';setTimeout(()=>button.textContent='分享本次',2000);}
+ catch{openDialog('分享这份报告',r.domain,[{name:'复制以下固定历史快照链接',value:url}],'此链接对应本次保存的数据。浏览与分享不会重新请求上游接口。');}
 }
 function shortTime(value) {
  const date=new Date(value);return Number.isNaN(date.getTime())?'未知':new Intl.DateTimeFormat('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(date);
@@ -175,3 +182,6 @@ $('analyze').onclick=async()=>{
 };
 $('export').onclick=()=>{const blob=new Blob([JSON.stringify({exported_at:new Date().toISOString(),results:state.results},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=el('a');a.href=url;a.download='domain-lens-results.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 count();
+
+const initialDomain=new URLSearchParams(location.search).get('domain');
+if(initialDomain&&initialDomain.length<=1000){$('domains').value=initialDomain;count();}

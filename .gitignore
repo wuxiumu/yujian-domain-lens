@@ -6,3 +6,6 @@
 /.env.*
 .DS_Store
 /config/traffic.local.php
+/var/history/*
+!/var/history/.gitkeep
+/config/site.local.php

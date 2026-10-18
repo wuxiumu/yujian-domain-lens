@@ -42,6 +42,49 @@ Windows 可在服务环境中设置 `DOMAIN_LENS_PHP_CLI` 为 `php.exe` 的绝�
 
 报错“当前 PHP 禁用了 proc_open”表示 Web PHP 的禁用函数配置阻止了 DNS 子进程，与 PHP 8.2 版本兼容性无关。本版要求允许上述进程函数，不会跳过超时和 SSRF 检查。
 
+## 独立报告、分享与历史列表
+
+- **最新独立报告**：`/domain/51chigua.com`。PHP 服务端直接输出完整报告，未执行 JavaScript 也能阅读注册、SEO、流量与更新时间。
+- **固定历史快照**：`/domain/51chigua.com/24位版本标识`。首页结果的“分享本次”和独立页的“分享本次快照”复制这个永久版本链接；“复制固定链接”则复制域名最新报告地址。
+- **历史列表**：`/history`，按最近查询时间倒序展示，每页 20 个域名；支持域名（含 IDN 中文写法）、完整 Title / Description / Keywords 的大小写不敏感搜索。分页链接为真实 HTML 链接，如 `/history?page=2`；搜索保留 `q` 参数。
+- **结果保存**：每次正常查询或手动刷新后自动写入 `var/history/`。同一份有效缓存的重复查询只更新最近查询时间与次数，不生成重复快照；数据或抓取时间变化时保存新快照。列表每个域名只出现一次，独立页可打开最近 8 个历史版本，较早的已分享版本仍保留文件并可访问。
+- 清除 `var/cache/` 的查询缓存不会删除历史报告，也不会让分享链接失效。历史没有自动过期，不与额度记录混用，不依赖数据库。需要备份整个 `var/history/`，不要在更新代码时覆盖它。
+- `/history` 和 `/domain/...` 是公开页面，历史为全站共享的公开域名报告；不记录查询者 IP、账号、Cookie 或 API Key。
+- **浏览、搜索、分页、爬虫抓取和打开分享链接均只读取文件**，不调用 RDAP、页面抓取或流量 API，也不消耗新积分。未查询的域名和不存在的版本返回真实 HTTP 404，不自动分析；重新分析需返回首页并主动提交。
+- 保存历史失败时，正常查询数据仍会返回，并单独提示历史未保存，避免因目录权限或锁冲突丢失当前查询结果。
+
+### 将已有缓存加入历史（升级后执行一次）
+
+```sh
+php scripts/import-history.php
+```
+
+该脚本读取项目中仍保留的注册 / SEO 与公开流量缓存（也可读取已过期但未删除的文件），按字段各自的原抓取时间合并导入；不使用 API Key，不联网，不消耗积分，可重复执行，不会重复创建相同快照。旧缓存没有完整查询日志，导入项以原始数据更新时间排序并标注“缓存记录时间”；新的真实查询会记录“最近查询”。无法恢复已被删除的旧缓存。
+
+### SEO 与分享配置
+
+每份最新报告有独立的 Title、Description、canonical、Open Graph、Twitter Card、WebPage 和面包屑结构化标记。历史快照 canonical 指向该域名最新报告，并设置 `noindex, follow` 避免同域名版本重复收录；筛选搜索页及空历史列表也设置 noindex。没有有效数据的失败报告不进入站点地图。
+
+`/robots.txt` 提供站点地图地址，`/sitemap.xml` 从已保存的有效报告生成；超过 1,000 个报告时自动拆为 `/sitemaps/1.xml` 等分片，快照不进入站点地图。页面被抓取与实际收录、排名由搜索引擎决定。
+
+默认 canonical 与独立页分享链接使用 `https://yujian.chiguashentan.com`，不会读取访客传入的 Host 头。如果更换域名，可复制 `config/site.example.php` 为忽略 Git 的 `config/site.local.php` 后修改 `base_url`，或通过 `APP_BASE_URL` 环境变量设置站点根地址。本地预览可用：
+
+```sh
+APP_BASE_URL=http://127.0.0.1:8788 php -S 127.0.0.1:8788 -t public public/router.php
+```
+
+### 宝塔 Nginx 伪静态（新增页面必须配置）
+
+网站运行目录保持 `public/`，确保 PHP 服务账号可写 `var/history/`（包括内部子目录；不要使用 777），在站点设置的“伪静态”中配置前端路由：
+
+```nginx
+location / {
+    try_files $uri $uri/ /pages.php?$query_string;
+}
+```
+
+宝塔通常已有 PHP 8.2 解析规则，它需要能执行 `public/pages.php`。如果使用下面的严格 Nginx 示例，必须同时保留 `/api.php` 与 `/pages.php` 的精确 PHP 转发。Apache 使用新增 `.htaccess` 重写规则，需启用 `mod_rewrite` 并允许相应的 `.htaccess` 配置。PHP 内置服务器继续使用原启动命令即可。
+
 ## 查询内容与含义
 
 - **注册时间**：通过 IANA RDAP bootstrap 选择注册局 HTTPS 服务，读取 `registration` 事件。子域名使用 ICANN 公共后缀规则折算为注册主体域名，例如 `www.example.co.uk` → `example.co.uk`。这不是网站上线时间。
@@ -172,12 +215,17 @@ server {
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy no-referrer always;
     add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'" always;
-    location / { try_files $uri $uri/ =404; }
+    location / { try_files $uri $uri/ /pages.php?$query_string; }
     location = /api.php {
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root/api.php;
         fastcgi_pass unix:/run/php/php8.3-fpm.sock;
         fastcgi_read_timeout 900s;
+    }
+    location = /pages.php {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root/pages.php;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
     }
     location ~ \.php$ { return 404; }
     location ~ /\. { deny all; }
@@ -193,7 +241,11 @@ server {
 ```sh
 php tests/run.php
 php tests/traffic.php
+php tests/history.php
+php tests/pages.php
 python3 tests/api.py http://127.0.0.1:8787
+php scripts/import-history.php
+python3 tests/pages_http.py http://127.0.0.1:8787
 php scripts/update-data.php
 ```
 
@@ -209,4 +261,4 @@ php scripts/update-data.php
 
 本次实测结果见 [VERIFICATION.md](VERIFICATION.md) 与 [JSON 快照](examples/results-2026-10-18.json)。快照仅供参考，不参与页面查询。
 
-更新部署时保留服务器上的 `config/traffic.local.php`、`var/cache/` 和 `var/state/`。真实 Key 不随源码分发；首次部署需在服务器本地配置。清空查询缓存不应删除额度记录。
+更新部署时保留服务器上的 `config/traffic.local.php`、`var/cache/`、`var/state/` 和 `var/history/`。真实 Key 不随源码分发；首次部署需在服务器本地配置。清空查询缓存不应删除额度记录。

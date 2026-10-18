@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require __DIR__.'/../src/Core.php';
+require __DIR__.'/../src/History.php';
 use DomainLens\{Cache,Problem};
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -37,7 +38,10 @@ try {
             if($action==='clear_cache') $results[]=DomainLens\clearDomainCache($s,$cache);
             else {
                 if($action==='refresh') DomainLens\clearDomainCache($s,$cache);
-                $results[]=DomainLens\analyze($s,$cache);
+                $result=DomainLens\analyze($s,$cache);
+                try { $result['history']=(new DomainLens\HistoryStore(__DIR__.'/../var/history'))->record($result); }
+                catch(Throwable $e) { $result['history']=['error'=>DomainLens\failure($e)]; }
+                $results[]=$result;
             }
         } catch(Throwable $e) { $results[]=['input'=>$s,'error'=>DomainLens\failure($e)]; }
     }
