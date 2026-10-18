@@ -1,5 +1,8 @@
 <?php
 declare(strict_types=1);
+// Keep PHP diagnostics in server logs rather than corrupting JSON responses.
+ini_set('display_errors','0');
+ini_set('log_errors','1');
 require __DIR__.'/../src/Core.php';
 require __DIR__.'/../src/History.php';
 use DomainLens\{Cache,Problem};

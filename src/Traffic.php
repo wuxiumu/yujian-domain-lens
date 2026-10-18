@@ -53,17 +53,18 @@ final class TrafficService {
     /** Permanent attempt budget per key; not cleared with expiring page cache. Reserve BEFORE sending. */
     private function reserveLookup(string $fingerprint): void {
         if ($this->maxLookups<=0) throw new Problem('traffic_local_limit','流量 API 调用已由管理员暂停。');
-        if (!is_dir($this->stateDir) && !mkdir($this->stateDir,0700,true) && !is_dir($this->stateDir)) throw new Problem('traffic_state_error','无法创建流量额度记录目录。');
+        if (!is_dir($this->stateDir) && !@mkdir($this->stateDir,0700,true) && !is_dir($this->stateDir)) throw new Problem('traffic_state_error','无法创建流量额度记录目录。');
         $path=$this->stateDir.'/tabapi-'.$fingerprint.'.json';
-        $lock=fopen($path.'.lock','c');
-        if (!$lock || !flock($lock,LOCK_EX|LOCK_NB)) { if(is_resource($lock))fclose($lock); throw new Problem('busy','流量额度记录正在更新，请稍后重试。'); }
+        $lock=@fopen($path.'.lock','c');
+        if (!$lock) throw new Problem('traffic_state_error','流量额度目录不可写，请检查 var/state 及已有文件的 PHP 服务账号写权限；未请求流量 API。');
+        if (!flock($lock,LOCK_EX|LOCK_NB)) { fclose($lock); throw new Problem('busy','流量额度记录正在更新，请稍后重试。'); }
         try {
-            $record=is_file($path)?json_decode((string)file_get_contents($path),true):['used'=>0];
+            $record=is_file($path)?json_decode((string)@file_get_contents($path),true):['used'=>0];
             if (!is_array($record) || !isset($record['used']) || !is_int($record['used']) || $record['used']<0) throw new Problem('traffic_state_error','流量额度记录损坏，已停止调用，请管理员检查。');
             if ($record['used'] >= $this->maxLookups) throw new Problem('traffic_local_limit','已达到本站流量 API 调用上限；未继续请求，请管理员核对免费积分余额。');
             $record['used']++; $record['updated_at']=gmdate('c');
-            $tmp=tempnam($this->stateDir,'budget-');
-            if (!$tmp || file_put_contents($tmp,json_encode($record),LOCK_EX)===false || !rename($tmp,$path)) throw new Problem('traffic_state_error','流量额度记录保存失败，已停止调用。');
+            $tmp=@tempnam($this->stateDir,'budget-');
+            if (!$tmp || @file_put_contents($tmp,json_encode($record),LOCK_EX)===false || !@rename($tmp,$path)) throw new Problem('traffic_state_error','流量额度记录保存失败，已停止调用。');
         } finally { flock($lock,LOCK_UN); fclose($lock); }
     }
 
