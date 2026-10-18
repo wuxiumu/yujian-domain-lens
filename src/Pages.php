@@ -69,7 +69,18 @@ final class PublicPages {
             $body.='<div class="history-list">';
             foreach($data['items'] as $item) {
                 $path=HistoryStore::path($item['domain']);$stats='HTTP '.($item['http_status']??'—').' · 注册 '.(!empty($item['created_at'])?substr($item['created_at'],0,10):'未提供');
-                $body.='<article class="history-card"><div class="history-domain"><a href="'.self::h($path).'"><h2>'.self::h($item['domain']).'</h2></a><p>'.self::h($stats).'</p><small>'.(($item['search_count']??0)>0?'最近查询':'缓存记录时间').' <time datetime="'.self::h($item['last_searched_at']).'">'.self::time($item['last_searched_at']).'</time></small></div><div class="history-snippet"><a href="'.self::h($path).'">'.self::h($item['title']?:'域名分析报告').'</a><p>'.self::h($item['description']?:'此记录未提供页面描述，展开报告查看注册信息与查询状态。').'</p><small>数据更新 '.self::time($item['data_updated_at']).'</small></div><div class="history-traffic"><span>Monthly Visits</span><strong>'.self::visits($item['monthly_visits']).'</strong><small>'.self::h($item['traffic_month']?($item['traffic_month'].' · 第三方估算'):'未提供流量数据').'</small><a href="'.self::h($path).'">查看报告 ↗</a></div></article>';
+                $trafficNote=$item['traffic_month']?($item['traffic_month'].' · 第三方估算'):'';
+                if($item['monthly_visits']===null) {
+                    // Read the saved snapshot so old indexes also expose the original failure. Never query upstream here.
+                    $savedTraffic=$store->report($item['domain'],$item['latest'])['result']['traffic']??[];
+                    $trafficNote=$savedTraffic['error']['message']??match($savedTraffic['status']??'') {
+                        'not_configured'=>'该历史记录未包含流量数据；请检查服务器 API Key 配置或导入已有流量缓存。',
+                        'no_data'=>'服务商未提供该域名的流量数据，不代表访问量为 0。',
+                        'limit_reached'=>'查询时已达到本站流量 API 调用上限。',
+                        default=>'该历史记录未保存月访问量；可导入已有流量缓存或重新查询。',
+                    };
+                }
+                $body.='<article class="history-card"><div class="history-domain"><a href="'.self::h($path).'"><h2>'.self::h($item['domain']).'</h2></a><p>'.self::h($stats).'</p><small>'.(($item['search_count']??0)>0?'最近查询':'缓存记录时间').' <time datetime="'.self::h($item['last_searched_at']).'">'.self::time($item['last_searched_at']).'</time></small></div><div class="history-snippet"><a href="'.self::h($path).'">'.self::h($item['title']?:'域名分析报告').'</a><p>'.self::h($item['description']?:'此记录未提供页面描述，展开报告查看注册信息与查询状态。').'</p><small>数据更新 '.self::time($item['data_updated_at']).'</small></div><div class="history-traffic"><span>Monthly Visits</span><strong>'.self::visits($item['monthly_visits']).'</strong><small>'.self::h($trafficNote).'</small><a href="'.self::h($path).'">查看报告 ↗</a></div></article>';
             }
             $body.='</div>';
         }

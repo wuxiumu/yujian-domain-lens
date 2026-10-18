@@ -262,3 +262,9 @@ php scripts/update-data.php
 本次实测结果见 [VERIFICATION.md](VERIFICATION.md) 与 [JSON 快照](examples/results-2026-10-18.json)。快照仅供参考，不参与页面查询。
 
 更新部署时保留服务器上的 `config/traffic.local.php`、`var/cache/`、`var/state/` 和 `var/history/`。真实 Key 不随源码分发；首次部署需在服务器本地配置。清空查询缓存不应删除额度记录。
+
+### 历史列表显示“暂无数据”
+
+历史报告只展示当时保存的数据，不会在浏览时调用流量 API。注册/SEO 与 TabAPI 使用独立缓存；只导入注册/SEO 缓存，或查询时没有配置 API Key、额度不足、接口失败、服务商无数据，都可能导致历史没有月访问量。列表会显示已保存的具体错误；旧版缺少错误记录时会提示检查配置或导入缓存。
+
+先在项目根目录运行 `php scripts/import-history.php`，将服务器保留的流量缓存与 SEO 记录合并（不消耗接口额度）。如果没有任何保留的流量缓存，请检查服务器 `config/traffic.local.php` 中的 Key 配置，再在分析首页正常查询一次；不要为了补历史先清空流量缓存。只在本地运行时设置的环境变量不会自动进入宝塔 PHP-FPM。导入不会自动调用服务商，也无法凭空恢复未保存的数据。
