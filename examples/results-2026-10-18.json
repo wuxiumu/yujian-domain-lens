@@ -1,0 +1,184 @@
+{
+  "results": [
+    {
+      "domain": "51chigua.com",
+      "checked_at": "2026-10-18T12:27:01+00:00",
+      "registration": {
+        "data": {
+          "domain": "51chigua.com",
+          "created_at": "2022-03-22T16:37:31Z",
+          "status": [
+            "client delete prohibited",
+            "client renew prohibited",
+            "client transfer prohibited",
+            "client update prohibited"
+          ],
+          "source": "https://rdap.verisign.com/com/v1/domain/51chigua.com",
+          "note": null
+        },
+        "error": null
+      },
+      "seo": {
+        "data": {
+          "url": "https://znl1.51chiguafun.com",
+          "http_status": 200,
+          "redirects": [
+            {
+              "url": "https://51chigua.com/",
+              "status": 301
+            },
+            {
+              "url": "https://go-ip-one.thiscg.com/",
+              "status": 302
+            },
+            {
+              "url": "https://znl1.51chiguafun.com",
+              "status": 200
+            }
+          ],
+          "content_type": "text/html",
+          "x_robots_tag": [],
+          "meta": {
+            "title": "51吃瓜 - 全网热榜、热点新闻与热门话题导航",
+            "description": "51吃瓜是全网热榜导航。聚合微博、知乎、百度、虎扑等平台公开热榜，帮助你快速查看今天大家正在关注的热点新闻、热门话题和趋势内容。",
+            "keywords": null,
+            "canonical": "https://hg.51chigua.com/",
+            "robots": "index,follow,max-image-preview:large",
+            "googlebot": null,
+            "lang": "zh-CN",
+            "h1": [
+              "51吃瓜"
+            ]
+          },
+          "warnings": [],
+          "robots_txt": {
+            "url": "https://znl1.51chiguafun.com/robots.txt",
+            "http_status": 200,
+            "preview": "User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /data/\nDisallow: /src/\nDisallow: /promo/hongguo/data/\nDisallow: /go/\nDisallow: /oss-admin.php\nDisallow: /nav/ai/\n\nSitemap: https://hg.51chigua.com/sitemap.xml\n",
+            "truncated": false
+          }
+        },
+        "error": null
+      },
+      "cache": {
+        "hit": false,
+        "ttl_seconds": 3600,
+        "expires_at": "2026-10-18T13:27:08+00:00"
+      }
+    },
+    {
+      "domain": "51chiguai.com",
+      "checked_at": "2026-10-18T12:27:08+00:00",
+      "registration": {
+        "data": {
+          "domain": "51chiguai.com",
+          "created_at": "2025-11-01T06:33:58Z",
+          "status": [
+            "active"
+          ],
+          "source": "https://rdap.verisign.com/com/v1/domain/51chiguai.com",
+          "note": null
+        },
+        "error": null
+      },
+      "seo": {
+        "data": {
+          "url": "https://www.51chiguai.com/",
+          "http_status": 200,
+          "redirects": [
+            {
+              "url": "https://51chiguai.com/",
+              "status": 301
+            },
+            {
+              "url": "https://www.51chiguai.com/",
+              "status": 200
+            }
+          ],
+          "content_type": "text/html",
+          "x_robots_tag": [],
+          "meta": {
+            "title": "51吃瓜网 · 全网热点聚合 · 每日吃瓜|网红事件|黑料网曝",
+            "description": "51吃瓜网聚合每日吃瓜、网红事件、黑料网曝与网络热门事件，汇集微博、知乎、抖音、百度等各大平台热门话题，实时更新最新热点。",
+            "keywords": "51吃瓜网,51chiguai.com,每日吃瓜,网红事件,黑料网曝,网络热门事件,全网热点聚合",
+            "canonical": "https://www.51chiguai.com/",
+            "robots": null,
+            "googlebot": null,
+            "lang": "zh-CN",
+            "h1": [
+              "全网热点聚合平台"
+            ]
+          },
+          "warnings": [],
+          "robots_txt": {
+            "url": "https://www.51chiguai.com/robots.txt",
+            "http_status": 404,
+            "preview": "<html>\n<head><title>404 Not Found</title></head>\n<body>\n<center><h1>404 Not Found</h1></center>\n<hr><center>nginx</center>\n</body>\n</html>",
+            "truncated": false
+          }
+        },
+        "error": null
+      },
+      "cache": {
+        "hit": false,
+        "ttl_seconds": 3600,
+        "expires_at": "2026-10-18T13:27:14+00:00"
+      }
+    },
+    {
+      "domain": "example.com",
+      "checked_at": "2026-10-18T12:27:14+00:00",
+      "registration": {
+        "data": {
+          "domain": "example.com",
+          "created_at": "1995-08-14T04:00:00Z",
+          "status": [
+            "client delete prohibited",
+            "client transfer prohibited",
+            "client update prohibited"
+          ],
+          "source": "https://rdap.verisign.com/com/v1/domain/example.com",
+          "note": null
+        },
+        "error": null
+      },
+      "seo": {
+        "data": {
+          "url": "https://example.com/",
+          "http_status": 200,
+          "redirects": [
+            {
+              "url": "https://example.com/",
+              "status": 200
+            }
+          ],
+          "content_type": "text/html; charset=utf-8",
+          "x_robots_tag": [],
+          "meta": {
+            "title": "Example Domain",
+            "description": null,
+            "keywords": null,
+            "canonical": null,
+            "robots": null,
+            "googlebot": null,
+            "lang": "en",
+            "h1": []
+          },
+          "warnings": [],
+          "robots_txt": {
+            "url": "https://example.com/robots.txt",
+            "http_status": 404,
+            "preview": "<!doctype html><html lang=en><head><meta charset=utf-8><link rel=icon href=data:,><meta name=viewport content=\"width=device-width,initial-scale=1\"><title>Example Domain</title><style>html{color-scheme:light dark;background:light-dark(#eee,#222)}body{font:16px/1.6 system-ui,sans-serif;max-width:26em;margin:auto;padding:25vh 2em 2em;text-align:center}</style></head><body><p>This domain is for use in documentation examples without needing permission. This is not a service; avoid relying on it for testing and monitoring purposes.</p><script src=/s.js></script></body></html>\n",
+            "truncated": false
+          }
+        },
+        "error": null
+      },
+      "cache": {
+        "hit": false,
+        "ttl_seconds": 3600,
+        "expires_at": "2026-10-18T13:27:20+00:00"
+      }
+    }
+  ]
+}
